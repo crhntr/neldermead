@@ -36,41 +36,30 @@ func TestRun(t *testing.T) {
 	}
 }
 
-//func FuzzRun_quadratic(f *testing.F) {
-//	f.Add(0.0, 0.0, -1.0, -1.0, 2.0, 3.0, 1.0, 2.0, -1.0, -2.0)
-//	f.Fuzz(func(t *testing.T, xInitial1, xInitial2, min1, max1, min2, max2, m1, m2, exponent1, exponent2 float64) {
-//		// Define the objective function to optimize
-//		objective := func(x []float64) float64 {
-//			return math.Pow(x[0]+m1, exponent1) + math.Pow(x[1]+m2, exponent2)
-//		}
-//
-//		// Define the starting point and Constraints
-//		x := []float64{xInitial1, xInitial2}
-//		constraints := []Constraint{{Min: min1, Max: max1}, {Min: min2, Max: max2}}
-//
-//		// Set the options for the optimizer
-//		options := Options{
-//			MaxIterations: 100,
-//			Tolerance:     1e-6,
-//			Alpha:         1.0,
-//			Beta:          0.5,
-//			Gamma:         2.0,
-//			Delta:         0.5,
-//			Constraints:   constraints,
-//		}
-//
-//		// Run the optimizer
-//		result, err := Run(objective, x, options)
-//		if err != nil {
-//			t.Errorf("unexpected error: %v", err)
-//		}
-//		// Check that the result is within the feasible region
-//		err = ensureInConstraintBounds(result.X, constraints)
-//		if err != nil {
-//			t.Errorf("unexpected error: %v", err)
-//		}
-//	})
-//}
+func FuzzRun_quadratic(f *testing.F) {
+	f.Add(0.0, 0.0, -1.0, -1.0, 2.0, 3.0, 1.0, 2.0, -1.0, -2.0)
+	f.Fuzz(func(t *testing.T, xInitial1, xInitial2, min1, max1, min2, max2, m1, m2, exponent1, exponent2 float64) {
+		// Define the objective function to optimize
+		objective := func(x []float64) float64 {
+			return math.Pow(x[0]+m1, exponent1) + math.Pow(x[1]+m2, exponent2)
+		}
+
+		// Define the starting point and Constraints
+		x := []float64{xInitial1, xInitial2}
+		constraints := []Constraint{{Min: min1, Max: max1}, {Min: min2, Max: max2}}
+
+		// Set the options for the optimizer
+		options := NewOptionsWithConstraints(constraints)
+
+		// Run the optimizer
+		result, err := Run(objective, x, options)
+		if err != nil {
+			return
+		}
+		// Check that the result is within the feasible region
+		requireXToBeWithinConstraints(t, result.X, constraints)
+	})
+}
 
 func requireXToBeWithinConstraints(t *testing.T, x []float64, constraints []Constraint) {
 	t.Helper()
