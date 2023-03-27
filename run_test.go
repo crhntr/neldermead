@@ -74,3 +74,27 @@ func requireXToBeWithinConstraints(t *testing.T, x []float64, constraints []Cons
 		}
 	}
 }
+
+func BenchmarkRun(b *testing.B) {
+	objective := func(x []float64) float64 {
+		return x[0] * x[1]
+	}
+
+	// Define the starting point and Constraints
+	x := []float64{0, .5}
+	constraints := []Constraint{
+		{Min: 0, Max: 10},
+		{Min: 0, Max: 10},
+	}
+
+	// Set the options for the optimizer
+	options := NewOptions()
+	options.Constraints = constraints
+
+	for n := 0; n < b.N; n++ {
+		_, err := Run(objective, x, options)
+		if err != nil {
+			b.Errorf("unexpected error: %v", err)
+		}
+	}
+}

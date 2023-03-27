@@ -3,7 +3,8 @@ package neldermead
 import (
 	"errors"
 	"math"
-	"sort"
+
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -20,7 +21,10 @@ type Simplex struct {
 }
 
 func (s *Simplex) replacePoint(i int, newPoint Point) {
-	s.Points[i] = newPoint
+	copy(s.Points[i].X, newPoint.X)
+	s.Points[i].F = newPoint.F
+	setZero(newPoint.X)
+	newPoint.F = 0
 }
 
 type Point struct {
@@ -127,10 +131,7 @@ func Run(f Objective, x0 []float64, options Options) (Point, error) {
 		return Point{}, err
 	}
 
-	simplex, err := createSimplex(x0, len(x0), options.Constraints)
-	if err != nil {
-		return Point{}, err
-	}
+	simplex := createSimplex(x0, len(x0), options.Constraints)
 
 	for i := 0; i < len(simplex.Points); i++ {
 		simplex.Points[i].F = f(simplex.Points[i].X)
@@ -138,50 +139,70 @@ func Run(f Objective, x0 []float64, options Options) (Point, error) {
 
 	sortSimplex(simplex)
 
+	var (
+		n               = len(x0)
+		pointBuf        = make([]float64, n*4, n*4)
+		reflectedPoint  = Point{X: pointBuf[:n:n]}
+		expandedPoint   = Point{X: pointBuf[n : n*2 : n*2]}
+		contractedPoint = Point{X: pointBuf[n*2 : n*3 : n*3]}
+		centroid        = pointBuf[n*3:]
+	)
 	for iter := 0; iter < options.MaxIterations; iter++ {
-		if math.Abs(simplex.Points[0].F-simplex.Points[len(simplex.Points)-1].F) < options.Tolerance {
-			return simplex.Points[0], nil
+		point, done, err := runIteration(f, options, centroid, simplex, reflectedPoint, expandedPoint, contractedPoint)
+		if err != nil {
+			return Point{}, err
 		}
-		centroid := computeCentroid(simplex, len(simplex.Points)-1)
-		reflectedPoint := simplex.Points[len(simplex.Points)-1].reflect(f, centroid, options.Alpha)
-		if reflectedPoint.F < simplex.Points[len(simplex.Points)-2].F {
-			expandedPoint := reflectedPoint.reflect(f, centroid, options.Gamma)
-			if expandedPoint.F < reflectedPoint.F {
-				simplex.replacePoint(len(simplex.Points)-1, expandedPoint)
-			} else {
-				simplex.replacePoint(len(simplex.Points)-1, reflectedPoint)
-			}
-		} else {
-			if reflectedPoint.F < simplex.Points[len(simplex.Points)-1].F {
-				simplex.replacePoint(len(simplex.Points)-1, reflectedPoint)
-			}
-			contractedPoint := simplex.Points[len(simplex.Points)-1].reflect(f, centroid, options.Beta)
-			if contractedPoint.F < simplex.Points[len(simplex.Points)-1].F {
-				simplex.replacePoint(len(simplex.Points)-1, contractedPoint)
-			} else {
-				shrinkSimplex(simplex, options.Delta)
-			}
-		}
-		for i := 0; i < len(simplex.Points); i++ {
-			simplex.Points[i].F = f(simplex.Points[i].X)
-		}
-		sortSimplex(simplex)
-		if len(options.Constraints) > 0 {
-			ensureXAreInConstraintBounds(simplex.Points[0].X, options.Constraints)
-		}
-
 		if options.CollapseThreshold != 0 {
 			avgEdgeLength := simplex.averageEdgeLength()
 			if avgEdgeLength < options.CollapseThreshold {
 				return Point{}, errors.New("simplex has collapsed")
 			}
 		}
+		if done {
+			return point, nil
+		}
 	}
 
 	return simplex.Points[0], nil
 }
 
-func createSimplex(x []float64, n int, constraints []Constraint) (Simplex, error) {
+func runIteration(f Objective, options Options, centroid []float64, simplex Simplex, reflectedPoint, expandedPoint, contractedPoint Point) (Point, bool, error) {
+	setZero(centroid)
+	lastPointIndex := len(simplex.Points) - 1
+	if math.Abs(simplex.Points[0].F-simplex.Points[lastPointIndex].F) < options.Tolerance {
+		return simplex.Points[0], true, nil
+	}
+	computeCentroid(centroid, simplex, lastPointIndex)
+	reflectedPoint = simplex.Points[lastPointIndex].reflect(reflectedPoint, f, centroid, options.Alpha)
+	if reflectedPoint.F < simplex.Points[len(simplex.Points)-2].F {
+		expandedPoint = reflectedPoint.reflect(expandedPoint, f, centroid, options.Gamma)
+		if expandedPoint.F < reflectedPoint.F {
+			simplex.replacePoint(lastPointIndex, expandedPoint)
+		} else {
+			simplex.replacePoint(lastPointIndex, reflectedPoint)
+		}
+	} else {
+		if reflectedPoint.F < simplex.Points[lastPointIndex].F {
+			simplex.replacePoint(lastPointIndex, reflectedPoint)
+		}
+		contractedPoint = simplex.Points[lastPointIndex].reflect(contractedPoint, f, centroid, options.Beta)
+		if contractedPoint.F < simplex.Points[lastPointIndex].F {
+			simplex.replacePoint(lastPointIndex, contractedPoint)
+		} else {
+			shrinkSimplex(simplex, options.Delta)
+		}
+	}
+	for i := 0; i < len(simplex.Points); i++ {
+		simplex.Points[i].F = f(simplex.Points[i].X)
+	}
+	sortSimplex(simplex)
+	if len(options.Constraints) > 0 {
+		ensureXAreInConstraintBounds(simplex.Points[0].X, options.Constraints)
+	}
+	return Point{}, false, nil
+}
+
+func createSimplex(x []float64, n int, constraints []Constraint) Simplex {
 	simplex := Simplex{Points: make([]Point, n+1)}
 
 	for i := range simplex.Points {
@@ -208,17 +229,16 @@ func createSimplex(x []float64, n int, constraints []Constraint) (Simplex, error
 		}
 	}
 
-	return simplex, nil
+	return simplex
 }
 
 func sortSimplex(simplex Simplex) {
-	sort.Slice(simplex.Points, func(i, j int) bool {
-		return simplex.Points[i].F < simplex.Points[j].F
+	slices.SortFunc(simplex.Points, func(p1, p2 Point) bool {
+		return p1.F < p2.F
 	})
 }
 
-func computeCentroid(simplex Simplex, excludeIndex int) []float64 {
-	centroid := make([]float64, len(simplex.Points[0].X))
+func computeCentroid(centroid []float64, simplex Simplex, excludeIndex int) {
 	for i := 0; i < len(simplex.Points); i++ {
 		if i != excludeIndex {
 			for j := 0; j < len(simplex.Points[i].X); j++ {
@@ -230,8 +250,6 @@ func computeCentroid(simplex Simplex, excludeIndex int) []float64 {
 	for j := 0; j < len(centroid); j++ {
 		centroid[j] /= float64(len(simplex.Points) - 1)
 	}
-
-	return centroid
 }
 
 func shrinkSimplex(simplex Simplex, delta float64) {
@@ -243,8 +261,7 @@ func shrinkSimplex(simplex Simplex, delta float64) {
 	}
 }
 
-func (p *Point) reflect(f Objective, centroid []float64, alpha float64) Point {
-	reflectedPoint := Point{X: make([]float64, len(p.X))}
+func (p *Point) reflect(reflectedPoint Point, f Objective, centroid []float64, alpha float64) Point {
 	for j := 0; j < len(p.X); j++ {
 		reflectedPoint.X[j] = centroid[j] + alpha*(centroid[j]-p.X[j])
 	}
@@ -292,4 +309,10 @@ func distance(x1, x2 []float64) float64 {
 		sum += d * d
 	}
 	return math.Sqrt(sum)
+}
+
+func setZero(s []float64) {
+	for i := range s {
+		s[i] = 0
+	}
 }
