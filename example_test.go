@@ -18,9 +18,17 @@ func ExampleRun() {
 	x0 := []float64{4}
 
 	// Define the optimization options.
-	options := neldermead.NewOptionsWithConstraints([]neldermead.Constraint{
-		{Min: 3, Max: 5},
-	})
+	options := neldermead.Options{
+		Alpha:         1,
+		Beta:          0.5,
+		Gamma:         2,
+		Delta:         0.5,
+		Tolerance:     1e-6,
+		MaxIterations: 1000,
+		Constraints: []neldermead.Constraint{
+			{Min: 3, Max: 5},
+		},
+	}
 
 	// Run the optimizer.
 	result, err := neldermead.Run(objective, x0, options)
