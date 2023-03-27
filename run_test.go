@@ -8,18 +8,19 @@ import (
 func TestRun(t *testing.T) {
 	// Define the objective function to optimize
 	objective := func(x []float64) float64 {
-		return math.Pow(x[0]-1, 2) + math.Pow(x[1]-2, 2)
+		return x[0] - x[1]
 	}
 
 	// Define the starting point and Constraints
-	x := []float64{0.0, 0.0}
+	x := []float64{0, .5}
 	constraints := []Constraint{
-		{Min: 0, Max: 1},
-		{Min: 0, Max: 1},
+		{Min: 0, Max: 10},
+		{Min: 0, Max: 10},
 	}
 
 	// Set the options for the optimizer
-	options := NewOptionsWithConstraints(constraints)
+	options := NewOptions()
+	options.Constraints = constraints
 
 	// Run the optimizer
 	result, err := Run(objective, x, options)
@@ -30,7 +31,7 @@ func TestRun(t *testing.T) {
 	requireXToBeWithinConstraints(t, result.X, constraints)
 
 	// Check that the objective value is close to the true minimum
-	trueMin := 2.0
+	trueMin := -10.0
 	if math.Abs(result.F-trueMin) > options.Tolerance {
 		t.Errorf("unexpected objective value: got %v, want %v (tolerance %v)", result.F, trueMin, options.Tolerance)
 	}
@@ -49,7 +50,8 @@ func FuzzRun_quadratic(f *testing.F) {
 		constraints := []Constraint{{Min: min1, Max: max1}, {Min: min2, Max: max2}}
 
 		// Set the options for the optimizer
-		options := NewOptionsWithConstraints(constraints)
+		options := NewOptions()
+		options.Constraints = constraints
 
 		// Run the optimizer
 		result, err := Run(objective, x, options)

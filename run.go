@@ -11,7 +11,7 @@ const (
 	DefaultBeta          = 0.5
 	DefaultGamma         = 2.0
 	DefaultDelta         = 0.5
-	DefaultTolerance     = 0.01
+	DefaultTolerance     = 0.0001
 	DefaultMaxIterations = 1000
 )
 
@@ -28,7 +28,7 @@ type Point struct {
 	F float64
 }
 
-type Function = func(x []float64) float64
+type Objective = func(x []float64) float64
 
 type Options struct {
 	Alpha,
@@ -43,7 +43,7 @@ type Options struct {
 	Constraints []Constraint
 }
 
-func NewDefaultOption() Options {
+func NewOptions() Options {
 	return Options{
 		Alpha:         DefaultAlpha,
 		Beta:          DefaultBeta,
@@ -52,25 +52,6 @@ func NewDefaultOption() Options {
 		Tolerance:     DefaultTolerance,
 		MaxIterations: DefaultMaxIterations,
 	}
-}
-
-func NewOptionsWithConstraints(constraints []Constraint) Options {
-	o := NewDefaultOption()
-	o.Alpha = alphaFromConstraints(constraints)
-	o.Tolerance = toleranceFromConstraints(constraints)
-	o.Constraints = constraints
-	return o
-}
-
-func toleranceFromConstraints(constraints []Constraint) float64 {
-	maxRange := 0.0
-	for _, c := range constraints {
-		rangeC := c.Max - c.Min
-		if rangeC > maxRange {
-			maxRange = rangeC
-		}
-	}
-	return maxRange / DefaultMaxIterations
 }
 
 func (options *Options) validate(x0 []float64) error {
@@ -140,7 +121,7 @@ func (c *Constraint) validate() error {
 	return nil
 }
 
-func Run(f Function, x0 []float64, options Options) (Point, error) {
+func Run(f Objective, x0 []float64, options Options) (Point, error) {
 	err := options.validate(x0)
 	if err != nil {
 		return Point{}, err
@@ -262,7 +243,7 @@ func shrinkSimplex(simplex Simplex, delta float64) {
 	}
 }
 
-func (p *Point) reflect(f Function, centroid []float64, alpha float64) Point {
+func (p *Point) reflect(f Objective, centroid []float64, alpha float64) Point {
 	reflectedPoint := Point{X: make([]float64, len(p.X))}
 	for j := 0; j < len(p.X); j++ {
 		reflectedPoint.X[j] = centroid[j] + alpha*(centroid[j]-p.X[j])
@@ -311,18 +292,4 @@ func distance(x1, x2 []float64) float64 {
 		sum += d * d
 	}
 	return math.Sqrt(sum)
-}
-
-func alphaFromConstraints(constraints []Constraint) float64 {
-	if len(constraints) == 0 {
-		return DefaultAlpha
-	}
-	maxRange := 0.0
-	for _, c := range constraints {
-		rangeC := c.Max - c.Min
-		if rangeC > maxRange {
-			maxRange = rangeC
-		}
-	}
-	return maxRange * 0.01
 }
