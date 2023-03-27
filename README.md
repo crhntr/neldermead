@@ -1,6 +1,5 @@
 # A Nelder-Mead implementation in Go
 
-I generated most of this code using chat gpt 4.
-I edited it quite a bit; however, if you feel I or the bot infringed on a license please LMK.
+I am playing wround with using new code generation with AI. I thought this would be a fun project to do so.
 
 The fuzz tester found about 180 "interesting" cases.
