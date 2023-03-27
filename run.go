@@ -3,19 +3,16 @@ package neldermead
 import (
 	"errors"
 	"math"
-	"math/rand"
 	"sort"
 )
 
 const (
-	DefaultAlpha                       = 1.0
-	DefaultBeta                        = 0.5
-	DefaultGamma                       = 2.0
-	DefaultDelta                       = 0.5
-	DefaultTolerance                   = 0.01
-	DefaultMaxIterations               = 1000
-	OptionalSuggestedCollapseThreshold = 1e-8
-	defaultToleranceAdjustment         = 1e-4
+	DefaultAlpha         = 1.0
+	DefaultBeta          = 0.5
+	DefaultGamma         = 2.0
+	DefaultDelta         = 0.5
+	DefaultTolerance     = 0.01
+	DefaultMaxIterations = 1000
 )
 
 type Simplex struct {
@@ -57,58 +54,12 @@ func NewDefaultOption() Options {
 	}
 }
 
-func NewOptionsWithSampling(f Function, constraints []Constraint, numSamples int) Options {
-	o := NewDefaultOption()
-	o.Alpha = alphaFromSampling(f, constraints, numSamples)
-	o.Tolerance = calculateToleranceWithSampling(f, constraints, numSamples)
-	o.Constraints = constraints
-	return o
-}
-
 func NewOptionsWithConstraints(constraints []Constraint) Options {
 	o := NewDefaultOption()
 	o.Alpha = alphaFromConstraints(constraints)
 	o.Tolerance = toleranceFromConstraints(constraints)
 	o.Constraints = constraints
 	return o
-}
-
-func calculateToleranceWithSampling(f Function, constraints []Constraint, numSamples int) float64 {
-	if len(constraints) == 0 || numSamples <= 0 {
-		return DefaultTolerance
-	}
-	functionValues := make([]float64, numSamples)
-	for i := 0; i < numSamples; i++ {
-		x := randomPointWithinConstraints(constraints)
-		functionValues[i] = f(x)
-	}
-	minVal, maxVal := minMax(functionValues)
-	estimatedRange := maxVal - minVal
-	return estimatedRange * defaultToleranceAdjustment
-}
-
-func randomPointWithinConstraints(constraints []Constraint) []float64 {
-	x := make([]float64, len(constraints))
-	for i, c := range constraints {
-		x[i] = c.Min + rand.Float64()*(c.Max-c.Min)
-	}
-	return x
-}
-
-func minMax(values []float64) (float64, float64) {
-	minVal := values[0]
-	maxVal := values[0]
-
-	for _, v := range values {
-		if v < minVal {
-			minVal = v
-		}
-		if v > maxVal {
-			maxVal = v
-		}
-	}
-
-	return minVal, maxVal
 }
 
 func toleranceFromConstraints(constraints []Constraint) float64 {
@@ -241,7 +192,7 @@ func Run(f Function, x0 []float64, options Options) (Point, error) {
 		if options.CollapseThreshold != 0 {
 			avgEdgeLength := simplex.averageEdgeLength()
 			if avgEdgeLength < options.CollapseThreshold {
-				return Point{}, errors.New("Simplex has collapsed")
+				return Point{}, errors.New("simplex has collapsed")
 			}
 		}
 	}
@@ -360,23 +311,6 @@ func distance(x1, x2 []float64) float64 {
 		sum += d * d
 	}
 	return math.Sqrt(sum)
-}
-
-func alphaFromSampling(f func(x []float64) float64, constraints []Constraint, numSamples int) float64 {
-	if len(constraints) == 0 || numSamples <= 0 {
-		return DefaultAlpha
-	}
-	functionValues := make([]float64, numSamples)
-
-	for i := 0; i < numSamples; i++ {
-		x := randomPointWithinConstraints(constraints)
-		functionValues[i] = f(x)
-	}
-
-	minVal, maxVal := minMax(functionValues)
-	estimatedRange := maxVal - minVal
-
-	return estimatedRange * 0.01
 }
 
 func alphaFromConstraints(constraints []Constraint) float64 {
