@@ -21,6 +21,8 @@ go get github.com/crhntr/neldermead
 
 ## Usage
 
+[Try it in the Go playground](https://go.dev/play/p/iLh2VgurPnf)
+
 The Rosenbrock function is a well-known test function for optimization algorithms, and its global minimum is at (1, 1),
 where the function value is 0. The Run function takes the Rosenbrock function as the objective function to minimize, the
 initial guess x0 as the starting point, and the Options struct with the desired parameters for the Nelder-Mead algorithm.
