@@ -12,7 +12,7 @@ const (
 	DefaultBeta          = 0.5
 	DefaultGamma         = 2.0
 	DefaultDelta         = 0.5
-	DefaultTolerance     = 1e-10
+	DefaultTolerance     = 1e-6
 	DefaultMaxIterations = 1000
 )
 

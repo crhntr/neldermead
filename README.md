@@ -32,8 +32,7 @@ The algorithm found a solution close to the global minimum with a very small obj
 The output of this program should be:
 
 ```
-Solution: [1.0000101959363473 1.0000203935669024]
-Objective function value: 4.421146657321306e-08
+Found minimum at x = [3 10], f(x) = 17.00
 ```
 
 ```go
@@ -47,17 +46,29 @@ import (
 )
 
 func main() {
-	rosenbrock := func(x []float64) float64 {
-		return math.Pow(1-x[0], 2) + 100*math.Pow(x[1]-x[0]*x[0], 2)
+	// Define the objective function to be minimized.
+	objective := func(x []float64) float64 {
+		// y = x^3
+		return math.Pow(x[0], 3) - x[1]
 	}
-	x0 := []float64{-1.2, 1.0} // initial guess
-	options := neldermead.NewOptions()
 
-	point, err := neldermead.Run(rosenbrock, x0, options)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+	// Define the starting point for the optimizer.
+	x0 := []float64{4, 5}
+
+	// Define the optimization options.
+	options := neldermead.NewOptions()
+	// (optional) add constraints
+	options.Constraints = []neldermead.Constraint{
+		{Min: 3, Max: 5},
+		{Min: 0, Max: 10},
 	}
-	fmt.Printf("Solution: %v\n", point.X)
-	fmt.Printf("Objective function value: %v\n", point.F)
+
+	// Run the optimizer.
+	result, err := neldermead.Run(objective, x0, options)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("Found minimum at x = %v, f(x) = %.2f\n", result.X, result.F)
 }
 ```
