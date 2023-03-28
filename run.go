@@ -42,19 +42,64 @@ type Point struct {
 
 type Objective = func(x []float64) float64
 
+// Options should be configured for your particular function and optimization problem.
+// The defaults configured in NewOptions should be considered a starting point that are
+// likely not well suited for your problem.
 type Options struct {
-	Alpha,
-	Beta,
-	Gamma,
-	Delta,
-	Tolerance,
+	// Alpha is the reflection coefficient used in the Nelder-Mead algorithm.
+	// It controls the size of the reflection step.
+	// A value of 1.0 is a common choice.
+	// Increasing Alpha may speed up convergence if the algorithm is too conservative, but setting it too large may cause instability or oscillations.
+	// In general, it is a positive value, and it should be tuned based on the specific optimization problem and the characteristics of the objective function.
+	Alpha float64
+
+	// Beta is the contraction coefficient used in the Nelder-Mead algorithm.
+	// It controls the size of the contraction step when the reflected point does not improve the objective function value.
+	// A common choice is 0.5, which corresponds to a step halfway between the worst point and the centroid.
+	// Beta should be a positive value between 0 and 1.
+	// Decreasing Beta may lead to faster convergence for functions with narrow valleys, but setting it too small may cause instability or slow convergence.
+	Beta float64
+
+	// Gamma is the expansion coefficient used in the Nelder-Mead algorithm.
+	// It controls the size of the expansion step when the reflected point improves the objective function value significantly.
+	// A common choice is 2.0, which doubles the step size from the centroid to the reflected point.
+	// Gamma should be a positive value greater than 1.
+	// Increasing Gamma can accelerate convergence for functions with wide valleys, but setting it too large may cause instability or overshooting.
+	Gamma float64
+
+	// Delta is the shrinkage coefficient used in the Nelder-Mead algorithm.
+	// It controls the size of the shrinking step when the contraction step fails to improve the objective function value.
+	// A common choice is 0.5, which reduces the size of the simplex by half along each edge.
+	// Delta should be a positive value between 0 and 1.
+	// Decreasing Delta can lead to a more thorough search in the local region, but setting it too small may cause excessive computational effort or slow convergence.
+	Delta float64
+
+	// Tolerance is the convergence criterion used in the Nelder-Mead algorithm.
+	// It is the threshold for the difference in objective function values between the best and worst points in the simplex.
+	// The algorithm terminates when this difference is less than or equal to Tolerance.
+	// A smaller Tolerance value leads to a more accurate solution but may require more iterations to converge.
+	Tolerance float64
+
+	// CollapseThreshold is the threshold used to detect the collapse of the simplex in the Nelder-Mead algorithm.
+	// It is the minimum average edge length of the simplex below which the algorithm is considered to have collapsed and returns an error.
+	// A collapse may indicate that the optimization process is stuck in a degenerate region or that the chosen parameters (Alpha, Beta, Gamma, and Delta) are not suitable for the specific optimization problem.
+	// If CollapseThreshold is set to 0, the collapse detection feature is disabled.
 	CollapseThreshold float64
 
+	// MaxIterations sets an upper bound on how long the algorithm should run
+	// to find the minima.
 	MaxIterations int
 
+	// Constraints is an optional list of constraints for each dimension of the optimization problem. Each Constraint
+	// specifies a Min and Max value, which define the lower and upper bounds for the corresponding dimension.
+	// If Constraints is not provided or is empty, the optimization problem is considered unconstrained.
+	// Providing Constraints can help guide the optimization process and prevent the algorithm from exploring
+	// infeasible regions of the search space. The appropriate constraints should be chosen based on the problem's
+	// specific requirements and the characteristics of the objective function.
 	Constraints []Constraint
 }
 
+// NewOptions should be considered a starting point that may not be suited for your optimization problem.
 func NewOptions() Options {
 	return Options{
 		Alpha:         DefaultAlpha,
