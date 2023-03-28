@@ -111,13 +111,13 @@ func NewOptions() Options {
 	}
 }
 
-func (options *Options) Validate() error {
+func (options *Options) validate() error {
 	if options.Alpha <= 0 {
 		return errors.New("invalid Options parameter: Alpha must be greater than 0")
 	}
 
 	if options.Beta <= 0 || options.Beta >= 1 {
-		return errors.New("invalid Options parameter: Beta must be in the range (0, 1)")
+		return errors.New("invalid Options parameter: Beta must be in the range [0, 1]")
 	}
 
 	if options.Gamma <= 1 {
@@ -125,7 +125,7 @@ func (options *Options) Validate() error {
 	}
 
 	if options.Delta <= 0 || options.Delta >= 1 {
-		return errors.New("invalid Options parameter: Delta must be in the range (0, 1)")
+		return errors.New("invalid Options parameter: Delta must be in the range [0, 1]")
 	}
 
 	if options.Tolerance <= 0 {
@@ -152,15 +152,19 @@ type Constraint struct {
 
 func (c *Constraint) validate() error {
 	if math.IsNaN(c.Min) || math.IsNaN(c.Max) {
-		return errors.New("fields Min and Max must be valid numbers")
+		return errors.New("constraint value for Min and Max must be valid numbers")
 	}
 
 	if math.IsInf(c.Min, 0) || math.IsInf(c.Max, 0) {
-		return errors.New("fields Min and Max must not be infinite")
+		return errors.New("constraint value for Min and Max must not be infinite")
 	}
 
-	if c.Min > c.Max {
-		return errors.New("fields Min must be less than or equal to Max")
+	if c.Max < c.Min {
+		return errors.New("constraint value for Min must be less than Max")
+	}
+
+	if c.Min == c.Max {
+		return errors.New("constraint value for Min not be equal to Max")
 	}
 
 	return nil
@@ -180,7 +184,26 @@ func (options *Options) validateX0(x0 []float64) error {
 	return nil
 }
 
+// Run is the main function that performs optimization using the Nelder-Mead algorithm. It takes an objective
+// function 'f', an initial guess 'x0', and an Options struct that configures the behavior of the algorithm.
+// Run returns the best solution found as a Point, containing the optimized input vector and the corresponding
+// value of the objective function. If an error occurs during the optimization process, such as a simplex
+// collapse or validation error, Run returns an error.
+//
+// The Nelder-Mead algorithm is a gradient-free optimization method that uses a simplex (a polytope with n+1
+// vertices in n-dimensional space) to explore the search space. The algorithm iteratively updates the simplex
+// by reflecting, expanding, contracting, or shrinking it, based on the values of the objective function at
+// its vertices. The algorithm terminates when the difference in the objective function values between the
+// best and worst points in the simplex falls below the specified Tolerance, or when the maximum number of
+// iterations is reached.
+//
+// The Run function is suitable for optimizing continuous, possibly non-convex, and noisy functions in
+// low to moderate dimensions. However, its performance may degrade as the dimensionality of the problem
+// increases or if the objective function has numerous local minima or sharp features.
 func Run(f Objective, x0 []float64, options Options) (Point, error) {
+	if err := options.validate(); err != nil {
+		return Point{}, err
+	}
 	if err := options.validateX0(x0); err != nil {
 		return Point{}, err
 	}

@@ -63,6 +63,30 @@ func TestRun(t *testing.T) {
 
 		expectPoint(t, Point{F: -6.0, X: []float64{2, 3}}, result, 2)
 	})
+
+	t.Run("bad initial x", func(t *testing.T) {
+		// Define the objective function to optimize
+		objective := func(x []float64) float64 {
+			return x[0] - x[1]
+		}
+
+		// Define the starting point and Constraints
+		x := []float64{10, 10}
+		constraints := []Constraint{
+			{Min: -1, Max: 1},
+			{Min: -1, Max: 1},
+		}
+
+		// Set the options for the optimizer
+		options := NewOptions()
+		options.Constraints = constraints
+
+		// Run the optimizer
+		_, err := Run(objective, x, options)
+		if err == nil {
+			t.Errorf("expected error not nil")
+		}
+	})
 }
 
 func TestSimplexCollapse(t *testing.T) {
@@ -177,5 +201,293 @@ func expectPoint(t *testing.T, exp, got Point, decimalAccuracy int) {
 		if math.Abs(expX-gotX) > diff {
 			t.Errorf("expected x%d = %.[4]*[2]f got %.[4]*[3]f", i, gotX, expX, decimalAccuracy)
 		}
+	}
+}
+
+func TestOptions_Validate(t *testing.T) {
+	tests := []struct {
+		name      string
+		options   Options
+		wantError bool
+	}{
+		{
+			name: "Valid options",
+			options: Options{
+				Alpha:             DefaultAlpha,
+				Beta:              DefaultBeta,
+				Gamma:             DefaultGamma,
+				Delta:             DefaultDelta,
+				Tolerance:         DefaultTolerance,
+				MaxIterations:     DefaultMaxIterations,
+				CollapseThreshold: 1e-6,
+				Constraints: []Constraint{
+					{Min: -1, Max: 1},
+				},
+			},
+			wantError: false,
+		},
+		{
+			name: "Negative Alpha",
+			options: Options{
+				Alpha:         -1.0,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+			},
+			wantError: true,
+		},
+		{
+			name: "Negative Beta",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          -1,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+			},
+			wantError: true,
+		},
+		{
+			name: "Beta too large",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          1.00001,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+			},
+			wantError: true,
+		},
+		{
+			name: "Gamma too small",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         .999,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+			},
+			wantError: true,
+		},
+		{
+			name: "Delta too small",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         -1,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+			},
+			wantError: true,
+		},
+		{
+			name: "Delta too large",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         1.1,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+			},
+			wantError: true,
+		},
+		{
+			name: "Negative Tolerance",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     -1,
+				MaxIterations: DefaultMaxIterations,
+			},
+			wantError: true,
+		},
+		{
+			name: "Zero MaxIterations",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: 0,
+			},
+			wantError: true,
+		},
+		{
+			name: "Negative MaxIterations",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: -1,
+			},
+			wantError: true,
+		},
+		{
+			name: "Constraint with equal upper and lower bounds",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+				Constraints: []Constraint{
+					{Min: 1, Max: 1},
+				},
+			},
+			wantError: true,
+		},
+		{
+			name: "Constraint values must not be infinite",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+				Constraints: []Constraint{
+					{Min: math.Inf(-1), Max: math.Inf(1)},
+				},
+			},
+			wantError: true,
+		},
+		{
+			name: "Constraint Max value must be a number",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+				Constraints: []Constraint{
+					{Min: math.NaN(), Max: 2},
+				},
+			},
+			wantError: true,
+		},
+		{
+			name: "Constraint Max value must be a number",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+				Constraints: []Constraint{
+					{Min: 2, Max: math.NaN()},
+				},
+			},
+			wantError: true,
+		},
+		{
+			name: "Constraint Min must be below Max",
+			options: Options{
+				Alpha:         DefaultAlpha,
+				Beta:          DefaultBeta,
+				Gamma:         DefaultGamma,
+				Delta:         DefaultDelta,
+				Tolerance:     DefaultTolerance,
+				MaxIterations: DefaultMaxIterations,
+				Constraints: []Constraint{
+					{Min: 10, Max: 5},
+				},
+			},
+			wantError: true,
+		},
+		// Add more test cases here...
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.options.validate()
+			if (err != nil) != tt.wantError {
+				t.Errorf("Options.Validate() error = %v, wantError %v", err, tt.wantError)
+			}
+		})
+	}
+}
+
+func TestOptions_validateX0(t *testing.T) {
+	tests := []struct {
+		name    string
+		cs      []Constraint
+		x0      []float64
+		wantErr bool
+	}{
+		{
+			name:    "empty",
+			wantErr: false,
+		},
+		{
+			name: "x is within constraint",
+			cs: []Constraint{
+				{Min: 0, Max: 2},
+			},
+			x0:      []float64{1},
+			wantErr: false,
+		},
+		{
+			name: "x is not within constraint",
+			cs: []Constraint{
+				{Min: 0, Max: 2},
+			},
+			x0:      []float64{200},
+			wantErr: true,
+		},
+		{
+			name:    "no constraints",
+			cs:      nil,
+			x0:      []float64{200, 200},
+			wantErr: false,
+		},
+		{
+			name: "exactly at lower bound range",
+			cs: []Constraint{
+				{Min: -2, Max: 2},
+			},
+			x0:      []float64{-2},
+			wantErr: false,
+		},
+		{
+			name: "exactly at upper bound range",
+			cs: []Constraint{
+				{Min: -2, Max: 2},
+			},
+			x0:      []float64{2},
+			wantErr: false,
+		},
+		{
+			name: "wrong number of constraints",
+			cs: []Constraint{
+				{Min: -2, Max: 2},
+			},
+			x0:      []float64{2, 4, 5},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := &Options{
+				Constraints: tt.cs,
+			}
+			if err := options.validateX0(tt.x0); (err != nil) != tt.wantErr {
+				t.Errorf("validateX0() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
