@@ -2,6 +2,8 @@ package neldermead
 
 import (
 	"math"
+	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -61,6 +63,37 @@ func TestRun(t *testing.T) {
 
 		expectPoint(t, Point{F: -6.0, X: []float64{2, 3}}, result, 2)
 	})
+}
+
+func TestSimplexCollapse(t *testing.T) {
+	src := rand.New(rand.NewSource(101))
+	flatRegionFunctionWithNoise := func(x []float64) float64 {
+		sum := 0.0
+		for _, xi := range x {
+			noise := src.Float64() * 1e-10
+			sum += ((xi - 5) * (xi - 5) * (xi - 5) * (xi - 5)) + noise
+		}
+		return sum
+	}
+
+	initialGuess := []float64{5.0, 5.0}
+	options := Options{
+		Alpha:             1.0,
+		Beta:              0.5,
+		Gamma:             2.0,
+		Delta:             0.5,
+		Tolerance:         1e-16,
+		MaxIterations:     1000,
+		CollapseThreshold: 1e-5,
+	}
+
+	_, err := Run(flatRegionFunctionWithNoise, initialGuess, options)
+	if err == nil {
+		t.Fatalf("expected failure")
+	}
+	if !strings.Contains(err.Error(), ErrorSimplexCollapse{}.Error()) {
+		t.Errorf("expected error %q", ErrorSimplexCollapse{}.Error())
+	}
 }
 
 func FuzzRun_quadratic(f *testing.F) {

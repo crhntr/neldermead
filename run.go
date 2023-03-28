@@ -27,6 +27,14 @@ func (s *Simplex) replacePoint(i int, newPoint Point) {
 	newPoint.F = 0
 }
 
+func (s *Simplex) isCollapsed(threshold float64) bool {
+	if threshold == 0 {
+		return false
+	}
+	avgEdgeLength := s.averageEdgeLength()
+	return avgEdgeLength < threshold
+}
+
 type Point struct {
 	X []float64
 	F float64
@@ -58,7 +66,7 @@ func NewOptions() Options {
 	}
 }
 
-func (options *Options) validate(x0 []float64) error {
+func (options *Options) Validate() error {
 	if options.Alpha <= 0 {
 		return errors.New("invalid Options parameter: Alpha must be greater than 0")
 	}
@@ -83,22 +91,10 @@ func (options *Options) validate(x0 []float64) error {
 		return errors.New("invalid Options parameter: MaxIterations must be greater than 0")
 	}
 
-	if len(options.Constraints) != 0 && len(options.Constraints) != len(x0) {
-		return errors.New("invalid options: The number of constraints must match the length of x0")
-	}
-
 	for _, constraint := range options.Constraints {
 		err := constraint.validate()
 		if err != nil {
 			return err
-		}
-	}
-
-	if len(options.Constraints) != 0 {
-		for i, x := range x0 {
-			if x < options.Constraints[i].Min || x > options.Constraints[i].Max {
-				return errors.New("invalid initial x parameter: x0 must satisfy the constraints")
-			}
 		}
 	}
 
@@ -125,9 +121,22 @@ func (c *Constraint) validate() error {
 	return nil
 }
 
+func (options *Options) validateX0(x0 []float64) error {
+	if len(options.Constraints) != 0 && len(options.Constraints) != len(x0) {
+		return errors.New("invalid options: The number of constraints must match the length of x0")
+	}
+	if len(options.Constraints) != 0 {
+		for i, x := range x0 {
+			if x < options.Constraints[i].Min || x > options.Constraints[i].Max {
+				return errors.New("invalid initial x parameter: x0 must satisfy the constraints")
+			}
+		}
+	}
+	return nil
+}
+
 func Run(f Objective, x0 []float64, options Options) (Point, error) {
-	err := options.validate(x0)
-	if err != nil {
+	if err := options.validateX0(x0); err != nil {
 		return Point{}, err
 	}
 
@@ -147,30 +156,21 @@ func Run(f Objective, x0 []float64, options Options) (Point, error) {
 		contractedPoint = Point{X: pointBuf[n*2 : n*3 : n*3]}
 		centroid        = pointBuf[n*3:]
 	)
-	for iter := 0; iter < options.MaxIterations; iter++ {
-		point, done, err := runIteration(f, options, centroid, simplex, reflectedPoint, expandedPoint, contractedPoint)
-		if err != nil {
-			return Point{}, err
-		}
-		if options.CollapseThreshold != 0 {
-			avgEdgeLength := simplex.averageEdgeLength()
-			if avgEdgeLength < options.CollapseThreshold {
-				return Point{}, errors.New("simplex has collapsed")
-			}
-		}
-		if done {
-			return point, nil
+	done := false
+	for iter := 0; iter < options.MaxIterations && !done; iter++ {
+		done = runIteration(f, options, centroid, simplex, reflectedPoint, expandedPoint, contractedPoint)
+		if simplex.isCollapsed(options.CollapseThreshold) {
+			return Point{}, ErrorSimplexCollapse{}
 		}
 	}
-
 	return simplex.Points[0], nil
 }
 
-func runIteration(f Objective, options Options, centroid []float64, simplex Simplex, reflectedPoint, expandedPoint, contractedPoint Point) (Point, bool, error) {
+func runIteration(f Objective, options Options, centroid []float64, simplex Simplex, reflectedPoint, expandedPoint, contractedPoint Point) bool {
 	setZero(centroid)
 	lastPointIndex := len(simplex.Points) - 1
 	if math.Abs(simplex.Points[0].F-simplex.Points[lastPointIndex].F) < options.Tolerance {
-		return simplex.Points[0], true, nil
+		return true
 	}
 	computeCentroid(centroid, simplex, lastPointIndex)
 	reflectedPoint = simplex.Points[lastPointIndex].reflect(reflectedPoint, f, centroid, options.Alpha)
@@ -199,7 +199,7 @@ func runIteration(f Objective, options Options, centroid []float64, simplex Simp
 	if len(options.Constraints) > 0 {
 		ensureXAreInConstraintBounds(simplex.Points[0].X, options.Constraints)
 	}
-	return Point{}, false, nil
+	return false
 }
 
 func createSimplex(x []float64, n int, constraints []Constraint) Simplex {
@@ -280,11 +280,9 @@ func ensureXAreInConstraintBounds(x []float64, constraints []Constraint) {
 	}
 }
 
-type ErrorWrongDimension struct{}
+type ErrorSimplexCollapse struct{}
 
-func (ErrorWrongDimension) Error() string {
-	return "constraint has wrong number of dimensions"
-}
+func (ErrorSimplexCollapse) Error() string { return "simplex has collapsed" }
 
 func (s *Simplex) averageEdgeLength() float64 {
 	n := len(s.Points)
