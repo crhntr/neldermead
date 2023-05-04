@@ -1,4 +1,4 @@
-# A Nelder-Mead implementation in Go [![Go Reference](https://pkg.go.dev/badge/github.com/crhntr/neldermead.svg)](https://pkg.go.dev/github.com/crhntr/neldermead)
+# A Nelder-Mead implementation in Go [![Go Reference](https://pkg.go.dev/badge/github.com/crhntr/neldermead.svg)](https://pkg.go.dev/github.com/crhntr/neldermead) [![CI](https://github.com/crhntr/neldermead/actions/workflows/ci.yml/badge.svg)](https://github.com/crhntr/neldermead/actions/workflows/ci.yml) 
 
 Nelder-Mead Optimization Algorithm in Go
 
