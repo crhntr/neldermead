@@ -1,5 +1,7 @@
 # A Nelder-Mead implementation in Go [![Go Reference](https://pkg.go.dev/badge/github.com/crhntr/neldermead.svg)](https://pkg.go.dev/github.com/crhntr/neldermead) [![CI](https://github.com/crhntr/neldermead/actions/workflows/ci.yml/badge.svg)](https://github.com/crhntr/neldermead/actions/workflows/ci.yml) 
 
+> The Go package documentation has in-depth usage help and algorithm tuning suggestions. This package intends to be super easy to use and optimize.
+
 This repository contains a Go implementation of the Nelder-Mead optimization algorithm, which is a gradient-free
 optimization method for continuous, possibly non-convex, and noisy functions in low to moderate dimensions.
 
