@@ -19,7 +19,7 @@ go get github.com/crhntr/neldermead
 
 ## Usage
 
-[Try it in the Go playground](https://go.dev/play/p/iLh2VgurPnf)
+[Try it in the Go playground](https://go.dev/play/p/wSdUvLEtW2u)
 
 The Rosenbrock function is a well-known test function for optimization algorithms, and its global minimum is at (1, 1),
 where the function value is 0. The Run function takes the Rosenbrock function as the objective function to minimize, the
@@ -41,22 +41,22 @@ func main() {
 	rosenbrock := func(x []float64) float64 {
 		return math.Pow(1-x[0], 2) + 100*math.Pow(x[1]-x[0]*x[0], 2)
 	}
-	x0 := []float64{-1.2, 1.0} // initial guess
+	x0 := []float64{-1, -1} // initial guess
 	options := neldermead.NewOptions()
 
 	point, err := neldermead.Run(rosenbrock, x0, options)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
-	fmt.Printf("Solution: %v\n", point.X)
-	fmt.Printf("Objective function value: %v\n", point.F)
+	fmt.Printf("Solution: %.6f\n", point.X)
+	fmt.Printf("Objective function value: %.6f\n", point.F)
 }
 ```
 
 The output of this program should be:
 ```
-Solution: [0.38628845214843754 0.14694976806640625]
-Objective function value: 0.3771567001556818
+Solution: [1.000329 1.000714]
+Objective function value: 0.000000
 ```
 
 Now let's look at an example with constraints,
