@@ -49,8 +49,9 @@ type Options struct {
 	// Alpha is the reflection coefficient used in the Nelder-Mead algorithm.
 	// It controls the size of the reflection step.
 	// A value of 1.0 is a common choice.
-	// Increasing Alpha may speed up convergence if the algorithm is too conservative, but setting it too large may cause instability or oscillations.
-	// In general, it is a positive value, and it should be tuned based on the specific optimization problem and the characteristics of the objective function.
+	// Increasing Alpha may speed up convergence, but setting it too large may cause instability or oscillations.
+	// In general, it is a positive value.
+	// It should be tuned based on the specific optimization problem and the characteristics of the objective function.
 	Alpha float64
 
 	// Beta is the contraction coefficient used in the Nelder-Mead algorithm.
@@ -86,8 +87,7 @@ type Options struct {
 	// If CollapseThreshold is set to 0, the collapse detection feature is disabled.
 	CollapseThreshold float64
 
-	// MaxIterations sets an upper bound on how long the algorithm should run
-	// to find the minima.
+	// MaxIterations sets an upper bound on how long the algorithm should run to find the minima.
 	MaxIterations int
 
 	// Constraints is an optional list of constraints for each dimension of the optimization problem. Each Constraint
