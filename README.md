@@ -27,11 +27,39 @@ initial guess x0 as the starting point, and the Options struct with the desired 
 
 The algorithm found a solution close to the global minimum with a very small objective function value.
 
-The output of this program should be:
+```go
+package main
 
+import (
+	"fmt"
+	"math"
+
+	"github.com/crhntr/neldermead"
+)
+
+func main() {
+	rosenbrock := func(x []float64) float64 {
+		return math.Pow(1-x[0], 2) + 100*math.Pow(x[1]-x[0]*x[0], 2)
+	}
+	x0 := []float64{-1.2, 1.0} // initial guess
+	options := neldermead.NewOptions()
+
+	point, err := neldermead.Run(rosenbrock, x0, options)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
+	fmt.Printf("Solution: %v\n", point.X)
+	fmt.Printf("Objective function value: %v\n", point.F)
+}
 ```
-Found minimum at x = [3 10], f(x) = 17.00
+
+The output of this program should be:
 ```
+Solution: [0.38628845214843754 0.14694976806640625]
+Objective function value: 0.3771567001556818
+```
+
+Now let's look at an example with constraints,
 
 ```go
 package main
@@ -69,4 +97,8 @@ func main() {
 
 	fmt.Printf("Found minimum at x = %v, f(x) = %.2f\n", result.X, result.F)
 }
+```
+The output of this program should be:
+```
+Found minimum at x = [3 10], f(x) = 17.00
 ```
