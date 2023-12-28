@@ -1,10 +1,10 @@
 package neldermead
 
 import (
+	"cmp"
 	"errors"
 	"math"
-
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 const (
@@ -301,8 +301,8 @@ func createSimplex(x []float64, n int, constraints []Constraint) Simplex {
 }
 
 func sortSimplex(simplex Simplex) {
-	slices.SortFunc(simplex.Points, func(p1, p2 Point) bool {
-		return p1.F < p2.F
+	slices.SortFunc(simplex.Points, func(a, b Point) int {
+		return cmp.Compare(a.F, b.F)
 	})
 }
 
