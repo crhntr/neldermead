@@ -15,14 +15,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: parse-go-version
-      run:
-        echo "version=$(cat go.mod | grep '^go \d*\.\d*$' | awk '{print $2}')" > "${GITHUB_OUTPUT}"
-
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '${{ steps.parse-go-version.outputs.version }}'
+        go-version-file: go.mod
 
     - name: Test
       run: go test -v ./...
