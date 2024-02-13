@@ -377,8 +377,9 @@ func distance(x1, x2 []float64) float64 {
 	return math.Sqrt(sum)
 }
 
-func setZero(s []float64) {
+func setZero[T any](s []T) {
+	var zero T
 	for i := range s {
-		s[i] = 0
+		s[i] = zero
 	}
 }
