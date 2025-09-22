@@ -76,7 +76,7 @@ import (
 func main() {
 	// Define the objective function to be minimized.
 	objective := func(x []float64) float64 {
-		// y = x^3
+		// y = x^3 - x
 		return math.Pow(x[0], 3) - x[1]
 	}
 
