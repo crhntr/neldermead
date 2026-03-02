@@ -199,7 +199,7 @@ func expectPoint(t *testing.T, exp, got Point, decimalAccuracy int) {
 		expX := exp.X[i]
 		gotX := got.X[i]
 		if math.Abs(expX-gotX) > diff {
-			t.Errorf("expected x%d = %.[4]*[2]f got %.[4]*[3]f", i, gotX, expX, decimalAccuracy)
+			t.Errorf("expected x%d = %.[4]*[2]f got %.[4]*[3]f", i, expX, gotX, decimalAccuracy)
 		}
 	}
 }
@@ -365,7 +365,7 @@ func TestOptions_Validate(t *testing.T) {
 			wantError: true,
 		},
 		{
-			name: "Constraint Max value must be a number",
+			name: "Constraint Min value must be a number",
 			options: Options{
 				Alpha:         DefaultAlpha,
 				Beta:          DefaultBeta,
@@ -409,7 +409,6 @@ func TestOptions_Validate(t *testing.T) {
 			},
 			wantError: true,
 		},
-		// Add more test cases here...
 	}
 
 	for _, tt := range tests {
@@ -431,7 +430,7 @@ func TestOptions_validateX0(t *testing.T) {
 	}{
 		{
 			name:    "empty",
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "x is within constraint",
