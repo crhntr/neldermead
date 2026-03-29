@@ -89,6 +89,21 @@ func TestRun(t *testing.T) {
 	})
 }
 
+func TestRun_convergence_rate(t *testing.T) {
+	objective := func(x []float64) float64 {
+		return math.Pow(x[0]-2, 2) + math.Pow(x[1]-3, 2) - 6
+	}
+
+	options := NewOptions()
+	options.MaxIterations = 50
+
+	result, err := Run(objective, []float64{0, 0.5}, options)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectPoint(t, Point{F: -6.0, X: []float64{2, 3}}, result, 2)
+}
+
 func TestSimplexCollapse(t *testing.T) {
 	src := rand.New(rand.NewSource(101))
 	flatRegionFunctionWithNoise := func(x []float64) float64 {

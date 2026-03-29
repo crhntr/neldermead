@@ -243,39 +243,46 @@ func runIteration(f Objective, options Options, centroid []float64, simplex Simp
 	reflectedPoint = transformPoint(simplex.Points[worst], reflectedPoint, f, centroid, options.Alpha)
 
 	secondWorst := len(simplex.Points) - 2
+	shrunk := false
+
 	if reflectedPoint.F < simplex.Points[secondWorst].F {
 		// Reflected point is better than second-worst: try expanding further.
-		expandedPoint = transformPoint(reflectedPoint, expandedPoint, f, centroid, options.Gamma)
+		expandedPoint = transformPoint(simplex.Points[worst], expandedPoint, f, centroid, options.Alpha*options.Gamma)
 		if expandedPoint.F < reflectedPoint.F {
 			simplex.replacePoint(worst, expandedPoint)
 		} else {
 			simplex.replacePoint(worst, reflectedPoint)
 		}
-	} else {
-		// Reflected point is not better than second-worst.
-		if reflectedPoint.F < simplex.Points[worst].F {
-			// But it is better than the worst: accept it before contracting.
-			simplex.replacePoint(worst, reflectedPoint)
+	} else if reflectedPoint.F < simplex.Points[worst].F {
+		// Between second-worst and worst: try outside contraction.
+		contractedPoint = transformPoint(simplex.Points[worst], contractedPoint, f, centroid, options.Alpha*options.Beta)
+		if contractedPoint.F <= reflectedPoint.F {
+			simplex.replacePoint(worst, contractedPoint)
+		} else {
+			shrinkSimplex(simplex, options.Delta)
+			shrunk = true
 		}
-		// Contract: move the worst point toward the centroid.
-		contractedPoint = transformPoint(simplex.Points[worst], contractedPoint, f, centroid, options.Beta)
+	} else {
+		// Worse than or equal to worst: try inside contraction.
+		contractedPoint = transformPoint(simplex.Points[worst], contractedPoint, f, centroid, -options.Beta)
 		if contractedPoint.F < simplex.Points[worst].F {
 			simplex.replacePoint(worst, contractedPoint)
 		} else {
-			// Contraction failed: shrink the entire simplex toward the best point.
 			shrinkSimplex(simplex, options.Delta)
+			shrunk = true
 		}
 	}
 
-	// Re-evaluate objective at all vertices (needed after shrink; redundant otherwise).
-	for i := 0; i < len(simplex.Points); i++ {
-		simplex.Points[i].F = f(simplex.Points[i].X)
+	if shrunk || len(options.Constraints) > 0 {
+		for i := 0; i < len(simplex.Points); i++ {
+			if len(options.Constraints) > 0 {
+				ensureXAreInConstraintBounds(simplex.Points[i].X, options.Constraints)
+			}
+			simplex.Points[i].F = f(simplex.Points[i].X)
+		}
 	}
 	sortSimplex(simplex)
 
-	if len(options.Constraints) > 0 {
-		ensureXAreInConstraintBounds(simplex.Points[0].X, options.Constraints)
-	}
 	return false
 }
 
@@ -341,8 +348,8 @@ func shrinkSimplex(simplex Simplex, delta float64) {
 }
 
 // transformPoint computes: result[j] = centroid[j] + coeff * (centroid[j] - source[j])
-// and evaluates f at the result. Used for reflection (Alpha), expansion (Gamma),
-// and contraction (Beta) by varying the coefficient.
+// and evaluates f at the result. Used for reflection, expansion, and contraction
+// by varying the coefficient and source point.
 func transformPoint(source Point, result Point, f Objective, centroid []float64, coeff float64) Point {
 	for j := 0; j < len(source.X); j++ {
 		result.X[j] = centroid[j] + coeff*(centroid[j]-source.X[j])
